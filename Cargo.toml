@@ -1,0 +1,8 @@
+[package]
+name = "hcaptcha-wasm-deobfuscator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+walrus = "0.23.3"
+anyhow = "1.0.98"
