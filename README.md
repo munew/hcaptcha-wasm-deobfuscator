@@ -49,3 +49,5 @@
 ## Dependencies
 - [Walrus](https://github.com/rustwasm/walrus) - WASM transformations
 - [anyhow](https://github.com/dtolnay/anyhow) - Error handling
+- [serde](https://github.com/serde-rs/serde) - Serialization/deserialization
+- [serde_json](https://github.com/serde-rs/json) - JSON support
