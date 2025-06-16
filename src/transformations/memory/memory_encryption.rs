@@ -27,9 +27,7 @@ impl XorMemoryEncryption {
 
         (start_pos, new_data)
     }
-}
-
-impl XorMemoryEncryption {
+    
     // Retrieves xor table
     // Needs a function that loads a primitive from the memory (preferably unsigned byte)
     fn get_xor_table(&self, module: &Module) -> Vec<u8> {
