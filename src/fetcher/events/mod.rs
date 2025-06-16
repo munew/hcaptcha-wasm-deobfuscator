@@ -33,7 +33,6 @@ pub fn fetch_events(module: &mut Module) -> Result<String, anyhow::Error> {
         }
         
         let (events_idx, events_length) = search_pattern(data_start, func).context("Could not find xor event loc in memory")?;
-        dbg!(events_idx, events_length);
         let global_idx = match &global.kind {
             GlobalKind::Local(c) => match c {
                 ConstExpr::Value(v) => match v {
@@ -45,42 +44,35 @@ pub fn fetch_events(module: &mut Module) -> Result<String, anyhow::Error> {
             _ => panic!(),
         };
         
-        return read_events(data_start, &data_segment.value, events_idx as usize, events_length as usize, *global_idx as usize);
+        return read_events(data_start, &data_segment.value, events_idx as usize, *global_idx as usize);
     }
     
     bail!("could not find function that init events")
 }
 
-fn read_events(data_start: usize, data: &Vec<u8>, encrypted_event_string_idx: usize, events_length: usize, xor_table: usize) -> Result<String, anyhow::Error> {
+fn read_events(data_start: usize, data: &Vec<u8>, encrypted_event_string_idx: usize, xor_table: usize) -> Result<String, anyhow::Error> {
     let mut res = String::new();
     let mut offset = 0;
     
     let off1 = encrypted_event_string_idx - data_start;
     let off2 = xor_table - data_start;
-    
-    // This is probably not how hCaptcha does it. However, it works :))))
-    while !res.contains("�") {
-        let a = u8s_to_u32_le(data[off1+offset], data[off1+offset+1], data[off1+offset+2], data[off1+offset+3]);
-        let b = u8s_to_u32_le(data[off2+offset], data[off2+offset+1], data[off2+offset+2], data[off2+offset+3]);
-        let xor = a ^ b;
+
+    // This is definitely not how hCaptcha does it
+    // I'm just way too lazy to parse the length due to how hard it would be with control flow
+    loop {
+        let a = data[off1+offset];
+        let b = data[off2+offset];
+        let xor = (a ^ b) as char;
         
-        res += &u32_to_string_le(xor);
-        offset += 4;
+        if !xor.is_alphanumeric() && xor != '\n' && xor != ',' {
+            break;
+        }
+        
+        res.push(xor);
+        offset += 1;
     }
-    
-    res = res[0..res.find("�").unwrap()].to_string();
-    dbg!(res.len());
-    
+
     Ok(res)
-}
-
-fn u8s_to_u32_le(a: u8, b: u8, c: u8, d: u8) -> u32 {
-    ((d as u32) << 24) | ((c as u32) << 16) | ((b as u32) << 8) | (a as u32)
-}
-
-fn u32_to_string_le(value: u32) -> String {
-    let bytes = value.to_le_bytes();
-    String::from_utf8_lossy(&bytes).into_owned()
 }
 
 fn search_pattern(data_segment_start: usize, func: &LocalFunction) -> Option<(i32, i32)> {
