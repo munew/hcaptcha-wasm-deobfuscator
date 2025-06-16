@@ -3,6 +3,7 @@ mod visitor;
 use crate::fetcher::events::visitor::collect_i32_consts;
 use anyhow::{bail, Context};
 use std::collections::VecDeque;
+use std::ops::Index;
 use walrus::ir::{BinaryOp, Block, Const, IfElse, Instr, Loop, Value};
 use walrus::{ConstExpr, DataKind, GlobalKind, LocalFunction, Module};
 
@@ -32,6 +33,7 @@ pub fn fetch_events(module: &mut Module) -> Result<String, anyhow::Error> {
         }
         
         let (events_idx, events_length) = search_pattern(data_start, func).context("Could not find xor event loc in memory")?;
+        dbg!(events_idx, events_length);
         let global_idx = match &global.kind {
             GlobalKind::Local(c) => match c {
                 ConstExpr::Value(v) => match v {
@@ -56,7 +58,8 @@ fn read_events(data_start: usize, data: &Vec<u8>, encrypted_event_string_idx: us
     let off1 = encrypted_event_string_idx - data_start;
     let off2 = xor_table - data_start;
     
-    while offset < (events_length+4) {
+    // This is probably not how hCaptcha does it. However, it works :))))
+    while !res.contains("�") {
         let a = u8s_to_u32_le(data[off1+offset], data[off1+offset+1], data[off1+offset+2], data[off1+offset+3]);
         let b = u8s_to_u32_le(data[off2+offset], data[off2+offset+1], data[off2+offset+2], data[off2+offset+3]);
         let xor = a ^ b;
@@ -64,6 +67,9 @@ fn read_events(data_start: usize, data: &Vec<u8>, encrypted_event_string_idx: us
         res += &u32_to_string_le(xor);
         offset += 4;
     }
+    
+    res = res[0..res.find("�").unwrap()].to_string();
+    dbg!(res.len());
     
     Ok(res)
 }
