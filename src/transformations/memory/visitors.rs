@@ -93,14 +93,12 @@ impl StoreMemoryFuncMapper {
         }
         
         match self.store_kind.as_ref().unwrap() {
-            StoreKind::I32_8 {..} => return Some(MemEncFuncType::Signed8),
-            StoreKind::I32_16 {..} => return Some(MemEncFuncType::Signed16),
-            StoreKind::I32 { .. } => return Some(MemEncFuncType::Signed32),
-            StoreKind::I64 { .. } => return Some(MemEncFuncType::Float64),
+            StoreKind::I32_8 {..} => Some(MemEncFuncType::Signed8),
+            StoreKind::I32_16 {..} => Some(MemEncFuncType::Signed16),
+            StoreKind::I32 { .. } => Some(MemEncFuncType::Signed32),
+            StoreKind::I64 { .. } => Some(MemEncFuncType::Float64),
             _ => unreachable!(),
         }
-        
-        None
     }
 }
 

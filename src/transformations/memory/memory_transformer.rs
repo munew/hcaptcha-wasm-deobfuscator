@@ -2,7 +2,6 @@ use crate::transformations::memory::visitors::{LoadMemoryFuncMapper, StoreMemory
 use crate::transformations::memory::MemEncFuncType;
 use crate::transformations::Transformer;
 use std::collections::{HashMap, VecDeque};
-use anyhow::Context;
 use walrus::ir::{
     BinaryOp, Block, ExtendedLoad, IfElse, Instr, Load, LoadKind, Loop, MemArg, Store, StoreKind,
     Value,
