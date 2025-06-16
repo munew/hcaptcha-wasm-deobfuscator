@@ -15,13 +15,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input = Path::new(
         args.get(1)
             .map(|s| s.as_str())
-            .unwrap_or("/assets/input.wasm"),
+            .unwrap_or("./assets/input.wasm"),
     );
     
     let output = Path::new(
         args.get(2)
             .map(|s| s.as_str())
-            .unwrap_or("/assets/output.wasm"),
+            .unwrap_or("./assets/output.wasm"),
     );
     
     if !input.exists() {

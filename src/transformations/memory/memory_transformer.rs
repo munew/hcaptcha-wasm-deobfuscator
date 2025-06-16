@@ -28,11 +28,9 @@ impl Transformer for MemoryTransformer {
             },
             _ => panic!(),
         } as usize;
-        
+
         let (start_pos, mut new_data) = memory_encryption_mode.decrypt(&module, data_start, &wasm_data.value);
-        while new_data.len() < wasm_data.value.len() {
-            new_data.push(0);
-        }
+        new_data.resize(wasm_data.value.len(), 0);
 
         // replace data with our new decrypted data
         {
