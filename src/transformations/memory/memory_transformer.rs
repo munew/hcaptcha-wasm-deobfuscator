@@ -2,11 +2,13 @@ use crate::transformations::memory::visitors::{LoadMemoryFuncMapper, StoreMemory
 use crate::transformations::memory::MemEncFuncType;
 use crate::transformations::Transformer;
 use std::collections::{HashMap, VecDeque};
+use anyhow::Context;
 use walrus::ir::{
     BinaryOp, Block, ExtendedLoad, IfElse, Instr, Load, LoadKind, Loop, MemArg, Store, StoreKind,
     Value,
 };
 use walrus::{ConstExpr, DataKind, FunctionId, FunctionKind, InstrLocId, Module, ValType};
+use crate::transformations::memory::memory_encryption::map_memory_encryption_mode;
 
 pub struct MemoryTransformer {}
 
@@ -14,11 +16,7 @@ impl Transformer for MemoryTransformer {
     fn transform(&mut self, module: &mut Module) {
         let mapped_load_functions = self.map_load_functions(module);
         let mapped_store_functions = self.map_store_functions(module);
-
-        let xor_table = self.get_xor_table(module);
-
-        // println!("Load functions: {:?}", mapped_load_functions);
-        // println!("Store functions: {:?}", mapped_store_functions);
+        let memory_encryption_mode = map_memory_encryption_mode(&module, &mapped_load_functions).unwrap();
 
         let wasm_data = module.data.iter().nth(1).unwrap();
         let data_start = match &wasm_data.kind {
@@ -31,29 +29,11 @@ impl Transformer for MemoryTransformer {
             },
             _ => panic!(),
         } as usize;
-
-        let start_pos = data_start - ((data_start / 320) << 3) - 320 - 23; // 23 is hardcoded btw
-        let mut new_data = Vec::<u8>::with_capacity(wasm_data.value.len());
-
-        for (i, _) in wasm_data.value.iter().enumerate() {
-            let pos = start_pos + i;
-
-            let res = self.read_byte(data_start, &wasm_data.value, &xor_table, pos);
-            if let Some(res) = res {
-                new_data.push(res);
-            } else {
-                break;
-            }
-        }
-
-        // println!("Decrypted {} bytes", new_data.len());
-
+        
+        let (start_pos, mut new_data) = memory_encryption_mode.decrypt(&module, data_start, &wasm_data.value);
         while new_data.len() < wasm_data.value.len() {
             new_data.push(0);
         }
-
-        // println!("Prev data len: {}", wasm_data.value.len());
-        // println!("New data len: {}", new_data.len());
 
         // replace data with our new decrypted data
         {
@@ -456,27 +436,6 @@ impl MemoryTransformer {
         mapped_store_functions
     }
 
-    fn read_byte(
-        &self,
-        data_start: usize,
-        data: &Vec<u8>,
-        xor_table: &Vec<u8>,
-        pos: usize,
-    ) -> Option<u8> {
-        let var0 = pos;
-        let var1 = var0 / 320;
-        let var2 = (var1 << 3) + var0 + 1032;
-
-        let v = xor_table[var0 % 96];
-        let result = if *data.get((var1 * 328 + 1024) - data_start)? > 0 {
-            data[var2 - data_start]
-        } else {
-            v
-        };
-
-        Some(result ^ v)
-    }
-
     fn rewrite_loads(&self, module: &mut Module, functions: &HashMap<FunctionId, MemEncFuncType>) {
         let memory_id = module.memories.iter().next().unwrap().id();
 
@@ -683,32 +642,5 @@ impl MemoryTransformer {
 
             func.builder_mut().func_body().return_at(5);
         }
-    }
-
-    // Retrieves xor table
-    // Needs a function that loads a primitive from the memory (preferably unsigned byte)
-    fn get_xor_table(&self, module: &Module) -> Vec<u8> {
-        let mut xors = Vec::new();
-
-        let data_segment = module.data.iter().next().unwrap();
-        let data_start = match &data_segment.kind {
-            DataKind::Active { offset, .. } => match *offset {
-                ConstExpr::Value(v) => match v {
-                    Value::I32(i) => i,
-                    _ => panic!(),
-                },
-                _ => panic!(),
-            },
-            _ => panic!(),
-        } as usize;
-
-        let offset = 32; // TODO: handle this dynamically
-
-        for i in 0..96 {
-            // It seems like that the table always has 96 bytes
-            xors.push(data_segment.value[offset + i - data_start]);
-        }
-
-        xors
     }
 }

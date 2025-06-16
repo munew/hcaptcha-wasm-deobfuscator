@@ -1,5 +1,6 @@
 pub mod memory_transformer;
 mod visitors;
+mod memory_encryption;
 
 #[derive(Eq, PartialEq, Hash, Debug)]
 enum MemEncFuncType {
