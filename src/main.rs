@@ -9,7 +9,7 @@ use crate::transformations::memory::memory_transformer::MemoryTransformer;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let t = Instant::now();
-    let mut module = Module::from_file("./assets/input.wasm").map_err(|e| format!("{:?}", e))?;
+    let mut module = Module::from_file("./assets/vm_input.wasm").map_err(|e| format!("{:?}", e))?;
     
     let mut transformers = vec![
         MemoryTransformer{},

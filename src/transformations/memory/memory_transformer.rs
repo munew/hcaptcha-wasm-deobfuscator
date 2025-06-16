@@ -6,9 +6,7 @@ use walrus::ir::{
     BinaryOp, Block, ExtendedLoad, IfElse, Instr, Load, LoadKind, Loop, MemArg, Store, StoreKind,
     Value,
 };
-use walrus::{
-    ConstExpr, DataKind, FunctionId, FunctionKind, InstrLocId, Module, ValType,
-};
+use walrus::{ConstExpr, DataKind, FunctionId, FunctionKind, InstrLocId, Module, ValType};
 
 pub struct MemoryTransformer {}
 
@@ -33,8 +31,8 @@ impl Transformer for MemoryTransformer {
             },
             _ => panic!(),
         } as usize;
-        
-        let start_pos = data_start-((data_start/320)<<3)-320-23; // 23 is hardcoded btw
+
+        let start_pos = data_start - ((data_start / 320) << 3) - 320 - 23; // 23 is hardcoded btw
         let mut new_data = Vec::<u8>::with_capacity(wasm_data.value.len());
 
         for (i, _) in wasm_data.value.iter().enumerate() {
@@ -47,7 +45,7 @@ impl Transformer for MemoryTransformer {
                 break;
             }
         }
-        
+
         // println!("Decrypted {} bytes", new_data.len());
 
         while new_data.len() < wasm_data.value.len() {
@@ -61,14 +59,14 @@ impl Transformer for MemoryTransformer {
         {
             let mem_id = module.get_memory_id().unwrap();
             let data = module.data.get_mut(wasm_data.id());
-            
+
             data.value = new_data;
             data.kind = DataKind::Active {
                 memory: mem_id,
                 offset: ConstExpr::Value(Value::I32(start_pos as i32)),
             }
         }
-        
+
         self.revert_memory_loads(module, &mapped_load_functions);
         self.revert_memory_stores(module, &mapped_store_functions);
         self.rewrite_loads(module, &mapped_load_functions);
@@ -177,149 +175,90 @@ impl MemoryTransformer {
                                 if let Some((next_instruction, _)) = next_instruction {
                                     if let Instr::Call(call) = next_instruction {
                                         if let Some(func_type) = functions.get(&call.func) {
-                                            match func_type {
-                                                MemEncFuncType::Signed64 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Load(Load {
-                                                                memory: memory_id,
-                                                                kind: LoadKind::I64 {
-                                                                    atomic: false,
-                                                                },
-                                                                arg: MemArg {
-                                                                    align: 8,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                MemEncFuncType::Signed32 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Load(Load {
-                                                                memory: memory_id,
-                                                                kind: LoadKind::I32 {
-                                                                    atomic: false,
-                                                                },
-                                                                arg: MemArg {
-                                                                    align: 4,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                MemEncFuncType::Signed16 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Load(Load {
-                                                                memory: memory_id,
-                                                                kind: LoadKind::I32_16 {
-                                                                    kind: ExtendedLoad::SignExtend,
-                                                                },
-                                                                arg: MemArg {
-                                                                    align: 2,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                MemEncFuncType::Unsigned16 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Load(Load {
-                                                                memory: memory_id,
-                                                                kind: LoadKind::I32_16 {
-                                                                    kind: ExtendedLoad::ZeroExtend,
-                                                                },
-                                                                arg: MemArg {
-                                                                    align: 2,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                MemEncFuncType::Unsigned8 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Load(Load {
-                                                                memory: memory_id,
-                                                                kind: LoadKind::I32_8 {
-                                                                    kind: ExtendedLoad::ZeroExtend,
-                                                                },
-                                                                arg: MemArg {
-                                                                    align: 1,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                MemEncFuncType::Signed8 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Load(Load {
-                                                                memory: memory_id,
-                                                                kind: LoadKind::I32_8 {
-                                                                    kind: ExtendedLoad::SignExtend,
-                                                                },
-                                                                arg: MemArg {
-                                                                    align: 1,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                MemEncFuncType::Float32 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Load(Load {
-                                                                memory: memory_id,
-                                                                kind: LoadKind::F32,
-                                                                arg: MemArg {
-                                                                    align: 4,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                MemEncFuncType::Float64 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Load(Load {
-                                                                memory: memory_id,
-                                                                kind: LoadKind::F64,
-                                                                arg: MemArg {
-                                                                    align: 8,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                _ => unreachable!(),
-                                            }
+                                            replacements.push((
+                                                idx,
+                                                (
+                                                    Instr::Load(match func_type {
+                                                        MemEncFuncType::Signed64 => Load {
+                                                            memory: memory_id,
+                                                            kind: LoadKind::I64 {
+                                                                atomic: false,
+                                                            },
+                                                            arg: MemArg {
+                                                                align: 8,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                        MemEncFuncType::Signed32 => Load {
+                                                            memory: memory_id,
+                                                            kind: LoadKind::I32 {
+                                                                atomic: false,
+                                                            },
+                                                            arg: MemArg {
+                                                                align: 4,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                        MemEncFuncType::Signed16 => Load {
+                                                            memory: memory_id,
+                                                            kind: LoadKind::I32_16 {
+                                                                kind: ExtendedLoad::SignExtend,
+                                                            },
+                                                            arg: MemArg {
+                                                                align: 2,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                        MemEncFuncType::Unsigned16 => Load {
+                                                            memory: memory_id,
+                                                            kind: LoadKind::I32_16 {
+                                                                kind: ExtendedLoad::ZeroExtend,
+                                                            },
+                                                            arg: MemArg {
+                                                                align: 2,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                        MemEncFuncType::Unsigned8 => Load {
+                                                            memory: memory_id,
+                                                            kind: LoadKind::I32_8 {
+                                                                kind: ExtendedLoad::ZeroExtend,
+                                                            },
+                                                            arg: MemArg {
+                                                                align: 1,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                        MemEncFuncType::Signed8 => Load {
+                                                            memory: memory_id,
+                                                            kind: LoadKind::I32_8 {
+                                                                kind: ExtendedLoad::SignExtend,
+                                                            },
+                                                            arg: MemArg {
+                                                                align: 1,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                        MemEncFuncType::Float32 => Load {
+                                                            memory: memory_id,
+                                                            kind: LoadKind::F32,
+                                                            arg: MemArg {
+                                                                align: 4,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                        MemEncFuncType::Float64 => Load {
+                                                            memory: memory_id,
+                                                            kind: LoadKind::F64,
+                                                            arg: MemArg {
+                                                                align: 8,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                    }),
+                                                    *instr_id,
+                                                ),
+                                            ));
                                         }
                                     }
                                 }
@@ -372,115 +311,68 @@ impl MemoryTransformer {
                                 if let Some((next_instruction, _)) = next_instruction {
                                     if let Instr::Call(call) = next_instruction {
                                         if let Some(func_type) = functions.get(&call.func) {
-                                            match func_type {
-                                                MemEncFuncType::Signed64 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Store(Store {
-                                                                memory: memory_id,
-                                                                kind: StoreKind::I64 {
-                                                                    atomic: false,
-                                                                },
-                                                                arg: MemArg {
-                                                                    align: 8,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                MemEncFuncType::Signed32 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Store(Store {
-                                                                memory: memory_id,
-                                                                kind: StoreKind::I32 {
-                                                                    atomic: false,
-                                                                },
-                                                                arg: MemArg {
-                                                                    align: 4,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                MemEncFuncType::Signed16
-                                                | MemEncFuncType::Unsigned16 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Store(Store {
-                                                                memory: memory_id,
-                                                                kind: StoreKind::I32_16 {
-                                                                    atomic: false,
-                                                                },
-                                                                arg: MemArg {
-                                                                    align: 2,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                MemEncFuncType::Signed8
-                                                | MemEncFuncType::Unsigned8 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Store(Store {
-                                                                memory: memory_id,
-                                                                kind: StoreKind::I32_8 {
-                                                                    atomic: false,
-                                                                },
-                                                                arg: MemArg {
-                                                                    align: 1,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                MemEncFuncType::Float32 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Store(Store {
-                                                                memory: memory_id,
-                                                                kind: StoreKind::F32,
-                                                                arg: MemArg {
-                                                                    align: 4,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                MemEncFuncType::Float64 => {
-                                                    replacements.push((
-                                                        idx,
-                                                        (
-                                                            Instr::Store(Store {
-                                                                memory: memory_id,
-                                                                kind: StoreKind::F64,
-                                                                arg: MemArg {
-                                                                    align: 8,
-                                                                    offset: i as u32,
-                                                                },
-                                                            }),
-                                                            *instr_id,
-                                                        ),
-                                                    ));
-                                                }
-                                                _ => unreachable!(),
-                                            }
+                                            replacements.push((
+                                                idx,
+                                                (
+                                                    Instr::Store(match func_type {
+                                                        MemEncFuncType::Signed64 => Store {
+                                                            memory: memory_id,
+                                                            kind: StoreKind::I64 { atomic: false },
+                                                            arg: MemArg {
+                                                                align: 8,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                        MemEncFuncType::Signed32 => Store {
+                                                            memory: memory_id,
+                                                            kind: StoreKind::I32 { atomic: false },
+                                                            arg: MemArg {
+                                                                align: 4,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                        MemEncFuncType::Signed16
+                                                        | MemEncFuncType::Unsigned16 => Store {
+                                                            memory: memory_id,
+                                                            kind: StoreKind::I32_16 {
+                                                                atomic: false,
+                                                            },
+                                                            arg: MemArg {
+                                                                align: 2,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                        MemEncFuncType::Signed8
+                                                        | MemEncFuncType::Unsigned8 => Store {
+                                                            memory: memory_id,
+                                                            kind: StoreKind::I32_8 {
+                                                                atomic: false,
+                                                            },
+                                                            arg: MemArg {
+                                                                align: 1,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                        MemEncFuncType::Float32 => Store {
+                                                            memory: memory_id,
+                                                            kind: StoreKind::F32,
+                                                            arg: MemArg {
+                                                                align: 4,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                        MemEncFuncType::Float64 => Store {
+                                                            memory: memory_id,
+                                                            kind: StoreKind::F64,
+                                                            arg: MemArg {
+                                                                align: 8,
+                                                                offset: i as u32,
+                                                            },
+                                                        },
+                                                    }),
+                                                    *instr_id,
+                                                ),
+                                            ));
                                         }
                                     }
                                 }
@@ -591,84 +483,115 @@ impl MemoryTransformer {
         for (id, func_type) in functions.into_iter() {
             let func = module.funcs.get_mut(*id).kind.unwrap_local_mut();
 
-
             let idx_local = *func.args.get(0).unwrap();
             let offset_local = *func.args.get(1).unwrap();
 
+            func.builder_mut()
+                .func_body()
+                .local_get_at(0, idx_local)
+                .local_get_at(1, offset_local)
+                .binop_at(2, BinaryOp::I32Add);
+
             match func_type {
                 MemEncFuncType::Unsigned8 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .load_at(3, memory_id, LoadKind::I32_8 { kind: ExtendedLoad::ZeroExtend }, MemArg { align: 1, offset: 0 })
-                        .return_at(4);
+                    func.builder_mut().func_body().load_at(
+                        3,
+                        memory_id,
+                        LoadKind::I32_8 {
+                            kind: ExtendedLoad::ZeroExtend,
+                        },
+                        MemArg {
+                            align: 1,
+                            offset: 0,
+                        },
+                    );
                 }
                 MemEncFuncType::Signed8 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .load_at(3, memory_id, LoadKind::I32_8 { kind: ExtendedLoad::SignExtend }, MemArg { align: 1, offset: 0 })
-                        .return_at(4);
+                    func.builder_mut().func_body().load_at(
+                        3,
+                        memory_id,
+                        LoadKind::I32_8 {
+                            kind: ExtendedLoad::SignExtend,
+                        },
+                        MemArg {
+                            align: 1,
+                            offset: 0,
+                        },
+                    );
                 }
                 MemEncFuncType::Unsigned16 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .load_at(3, memory_id, LoadKind::I32_16 { kind: ExtendedLoad::ZeroExtend }, MemArg { align: 2, offset: 0 })
-                        .return_at(4);
+                    func.builder_mut().func_body().load_at(
+                        3,
+                        memory_id,
+                        LoadKind::I32_16 {
+                            kind: ExtendedLoad::ZeroExtend,
+                        },
+                        MemArg {
+                            align: 2,
+                            offset: 0,
+                        },
+                    );
                 }
                 MemEncFuncType::Signed16 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .load_at(3, memory_id, LoadKind::I32_16 { kind: ExtendedLoad::SignExtend }, MemArg { align: 2, offset: 0 })
-                        .return_at(4);
+                    func.builder_mut().func_body().load_at(
+                        3,
+                        memory_id,
+                        LoadKind::I32_16 {
+                            kind: ExtendedLoad::SignExtend,
+                        },
+                        MemArg {
+                            align: 2,
+                            offset: 0,
+                        },
+                    );
                 }
                 MemEncFuncType::Signed32 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .load_at(3, memory_id, LoadKind::I32 { atomic: false }, MemArg { align: 4, offset: 0 })
-                        .return_at(4);
+                    func.builder_mut().func_body().load_at(
+                        3,
+                        memory_id,
+                        LoadKind::I32 { atomic: false },
+                        MemArg {
+                            align: 4,
+                            offset: 0,
+                        },
+                    );
                 }
                 MemEncFuncType::Signed64 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .load_at(3, memory_id, LoadKind::I64 { atomic: false }, MemArg { align: 8, offset: 0 })
-                        .return_at(4);
+                    func.builder_mut().func_body().load_at(
+                        3,
+                        memory_id,
+                        LoadKind::I64 { atomic: false },
+                        MemArg {
+                            align: 8,
+                            offset: 0,
+                        },
+                    );
                 }
                 MemEncFuncType::Float32 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .load_at(3, memory_id, LoadKind::F32, MemArg { align: 4, offset: 0 })
-                        .return_at(4);
+                    func.builder_mut().func_body().load_at(
+                        3,
+                        memory_id,
+                        LoadKind::F32,
+                        MemArg {
+                            align: 4,
+                            offset: 0,
+                        },
+                    );
                 }
                 MemEncFuncType::Float64 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .load_at(3, memory_id, LoadKind::F64, MemArg { align: 8, offset: 0 })
-                        .return_at(4);
+                    func.builder_mut().func_body().load_at(
+                        3,
+                        memory_id,
+                        LoadKind::F64,
+                        MemArg {
+                            align: 8,
+                            offset: 0,
+                        },
+                    );
                 }
             }
+
+            func.builder_mut().func_body().return_at(4);
         }
     }
 
@@ -682,68 +605,83 @@ impl MemoryTransformer {
             let value_local = *func.args.get(1).unwrap();
             let offset_local = *func.args.get(2).unwrap();
 
+            func.builder_mut()
+                .func_body()
+                .local_get_at(0, idx_local)
+                .local_get_at(1, offset_local)
+                .binop_at(2, BinaryOp::I32Add)
+                .local_get_at(3, value_local);
+
             match func_type {
                 MemEncFuncType::Unsigned8 | MemEncFuncType::Signed8 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .local_get_at(3, value_local)
-                        .store_at(4, memory_id, StoreKind::I32_8 { atomic: false }, MemArg { align: 1, offset: 0 })
-                        .return_at(5);
+                    func.builder_mut().func_body().store_at(
+                        4,
+                        memory_id,
+                        StoreKind::I32_8 { atomic: false },
+                        MemArg {
+                            align: 1,
+                            offset: 0,
+                        },
+                    );
                 }
                 MemEncFuncType::Unsigned16 | MemEncFuncType::Signed16 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .local_get_at(3, value_local)
-                        .store_at(4, memory_id, StoreKind::I32_16 { atomic: false }, MemArg { align: 2, offset: 0 })
-                        .return_at(5);
+                    func.builder_mut().func_body().store_at(
+                        4,
+                        memory_id,
+                        StoreKind::I32_16 { atomic: false },
+                        MemArg {
+                            align: 2,
+                            offset: 0,
+                        },
+                    );
                 }
                 MemEncFuncType::Signed32 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .local_get_at(3, value_local)
-                        .store_at(4, memory_id, StoreKind::I32 { atomic: false }, MemArg { align: 4, offset: 0 })
-                        .return_at(5);
+                    func.builder_mut().func_body().store_at(
+                        4,
+                        memory_id,
+                        StoreKind::I32 { atomic: false },
+                        MemArg {
+                            align: 4,
+                            offset: 0,
+                        },
+                    );
                 }
                 MemEncFuncType::Signed64 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .local_get_at(3, value_local)
-                        .store_at(4, memory_id, StoreKind::I64 { atomic: false }, MemArg { align: 8, offset: 0 })
-                        .return_at(5);
+                    func.builder_mut().func_body().store_at(
+                        4,
+                        memory_id,
+                        StoreKind::I64 { atomic: false },
+                        MemArg {
+                            align: 8,
+                            offset: 0,
+                        },
+                    );
                 }
                 MemEncFuncType::Float32 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .local_get_at(3, value_local)
-                        .store_at(4, memory_id, StoreKind::F32, MemArg { align: 4, offset: 0 })
-                        .return_at(5);
+                    func.builder_mut().func_body().store_at(
+                        4,
+                        memory_id,
+                        StoreKind::F32,
+                        MemArg {
+                            align: 4,
+                            offset: 0,
+                        },
+                    );
                 }
                 MemEncFuncType::Float64 => {
-                    func.builder_mut()
-                        .func_body()
-                        .local_get_at(0, idx_local)
-                        .local_get_at(1, offset_local)
-                        .binop_at(2, BinaryOp::I32Add)
-                        .local_get_at(3, value_local)
-                        .store_at(4, memory_id, StoreKind::F64, MemArg { align: 8, offset: 0 })
-                        .return_at(5);
+                    func.builder_mut().func_body().store_at(
+                        4,
+                        memory_id,
+                        StoreKind::F64,
+                        MemArg {
+                            align: 8,
+                            offset: 0,
+                        },
+                    );
                 }
             }
+
+            func.builder_mut().func_body().return_at(5);
         }
     }
 
@@ -764,7 +702,7 @@ impl MemoryTransformer {
             _ => panic!(),
         } as usize;
 
-        let offset = 693; // TODO: handle this dynamically
+        let offset = 32; // TODO: handle this dynamically
 
         for i in 0..96 {
             // It seems like that the table always has 96 bytes
@@ -774,4 +712,3 @@ impl MemoryTransformer {
         xors
     }
 }
-
