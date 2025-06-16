@@ -1,7 +1,6 @@
 # hCaptcha WASM deobfuscator & fetcher
 
 ## Important
-- This tool only works with the WASM binary currently located in assets/. Some constants are hardcoded and may need updating for other versions.
 - hCaptcha appears to randomly choose between XOR and ChaCha20 for memory encryption. Only XOR is currently supported—ChaCha20 is not yet implemented.
 - The output WASM is fully runnable, but you must comment out the memory block initialization call in the JS. 
 
