@@ -32,3 +32,12 @@ jobs:
           name: ${{ github.event.repository.name }}-${{ runner.os }}-${{ runner.arch }}-bin
           path: |
             target/release/${{ github.event.repository.name }}*
+
+      - name: Create Release and Upload Binaries
+        if: github.ref == github.ref
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            target/release/${{ github.event.repository.name }}*
