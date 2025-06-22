@@ -38,9 +38,9 @@ jobs:
         run: |
           mkdir -p artifacts
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            cp target/${{ matrix.target }}/release/${{ github.event.repository.name }}.exe artifacts/
+            cp target/${{ matrix.target }}/release/${{ github.event.repository.name }}.exe artifacts/${{ github.event.repository.name }}-${{ matrix.name }}.exe
           else
-            cp target/${{ matrix.target }}/release/${{ github.event.repository.name }} artifacts/
+            cp target/${{ matrix.target }}/release/${{ github.event.repository.name }} artifacts/${{ github.event.repository.name }}-${{ matrix.name }}
           fi
         shell: bash
 
