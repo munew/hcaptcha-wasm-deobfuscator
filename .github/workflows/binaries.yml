@@ -11,7 +11,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            name: linux-amd64
+            target: x86_64-unknown-linux-gnu
+
+          - os: windows-latest
+            name: windows-amd64
+            target: x86_64-pc-windows-msvc
 
     steps:
       - name: Checkout code
@@ -21,23 +28,41 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          target: ${{ matrix.target }}
           override: true
 
       - name: Build release binary
-        run: cargo build --release
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p artifacts
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            cp target/${{ matrix.target }}/release/${{ github.event.repository.name }}.exe artifacts/
+          else
+            cp target/${{ matrix.target }}/release/${{ github.event.repository.name }} artifacts/
+          fi
+        shell: bash
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.repository.name }}-${{ runner.os }}-${{ runner.arch }}-bin
-          path: |
-            target/release/${{ github.event.repository.name }}*
+          name: ${{ github.event.repository.name }}-${{ matrix.name }}
+          path: artifacts/*
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
       - name: Create Release and Upload Binaries
-        if: github.ref == github.ref
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: |
-            target/release/${{ github.event.repository.name }}*
+          files: artifacts/**/*
