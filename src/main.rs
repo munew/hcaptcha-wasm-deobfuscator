@@ -1,7 +1,7 @@
 mod fetcher;
 mod transformations;
 
-use crate::fetcher::events::fetch_events;
+// use crate::fetcher::events::fetch_events;
 use crate::transformations::memory::memory_transformer::MemoryTransformer;
 use crate::transformations::Transformer;
 use std::env;
@@ -37,8 +37,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         transformer.transform(&mut module);
     }
 
-    let events = fetch_events(&mut module)?;
-    println!("{:?}", events);
+    // let events = fetch_events(&mut module)?;
+    // println!("{:?}", events);
 
     println!("Took {:?}", t.elapsed());
     module.emit_wasm_file(output)?;

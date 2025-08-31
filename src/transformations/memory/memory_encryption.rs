@@ -118,6 +118,7 @@ pub fn map_memory_encryption_mode(module: &Module, mapped_loads: &HashMap<Functi
                         }
                     }
                 }
+                Instr::Block(b) => stack.push_front(b.seq),
                 _ => continue,
             }
         }
